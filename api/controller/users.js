@@ -6,30 +6,33 @@ const createUser = (req, res, pool, bcrypt, saltRound) => {
             hash,
         ], (err) => {
             if (err?.code === "23505") res.status(400).send("This nickname already exists");
-            if (err) throw err;
-            res.status(201).send("User has been saved")
+            else { res.status(201).send("User has been saved") }
         })
     })
 
 }
 
 
-const signUser = (req, res, pool, bcrypt, saltRound) => {
+const signUser = (req, res, pool, bcrypt) => {
     const { nickname, password } = req.body
     pool.query("SELECT * FROM users WHERE nickname = $1", [nickname], (err, result) => {
-        const { nickname: nicknameResult, id: idResult, password: passwordResult } = result?.rows[0]
-        if (err) {
-            res.status(400).send(err)
-        }
-        const hashed = passwordResult
+        if (err) throw err
 
-        bcrypt.compare(password, hashed, (error, answer) => {
-            if (answer) {
-                res.status(200).send({ nicknameResult, idResult, isPasswordOk: answer })
-            } else {
-                res.status(401).send(error)
-            }
-        })
+        else if (result.rows.length === 0) {
+            res.status(400).send("This user doesn't exists")
+        }
+        else {
+            const { nickname: nicknameResult, id: idResult, password: passwordResult } = result?.rows[0]
+            const hashed = passwordResult
+
+            bcrypt.compare(password, hashed, (error, answer) => {
+                if (answer) {
+                    res.status(200).send({ id: idResult, nickname: nicknameResult })
+                } else {
+                    res.status(401).send('The password is wrong')
+                }
+            })
+        }
     })
 }
 
